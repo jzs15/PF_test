@@ -15,7 +15,7 @@ from operator_py.box_annotator_ohem import *
 
 class FasterRCNN(ResNet101):
     def __init__(self):
-        super(FasterRCNN, self).__init__()
+        self.eps = 1e-5
 
     def get_rpn(self, conv_feat, num_anchors):
         rpn_conv = mx.sym.Convolution(
@@ -47,11 +47,9 @@ class FasterRCNN(ResNet101):
             im_info = mx.sym.Variable(name="im_info")
 
         # shared convolutional layers
-        conv_feat = self.get_resnet_v1_conv4(data)
-        # res5
-        relu1 = self.get_resnet_v1_conv5(conv_feat)
+        res4, res5 = self.get_resnet_backbone(data)
 
-        rpn_cls_score, rpn_bbox_pred = self.get_rpn(conv_feat, num_anchors)
+        rpn_cls_score, rpn_bbox_pred = self.get_rpn(res4, num_anchors)
 
         if is_train:
             # prepare rpn data
@@ -75,20 +73,13 @@ class FasterRCNN(ResNet101):
                 data=rpn_cls_score_reshape, mode="channel", name="rpn_cls_act")
             rpn_cls_act_reshape = mx.sym.Reshape(
                 data=rpn_cls_act, shape=(0, 2 * num_anchors, -1, 0), name='rpn_cls_act_reshape')
-            if cfg.TRAIN.CXX_PROPOSAL:
-                rois = mx.contrib.sym.Proposal(
-                    cls_prob=rpn_cls_act_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
-                    feature_stride=cfg.network.RPN_FEAT_STRIDE, scales=tuple(cfg.network.ANCHOR_SCALES),
-                    ratios=tuple(cfg.network.ANCHOR_RATIOS),
-                    rpn_pre_nms_top_n=cfg.TRAIN.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=cfg.TRAIN.RPN_POST_NMS_TOP_N,
-                    threshold=cfg.TRAIN.RPN_NMS_THRESH, rpn_min_size=cfg.TRAIN.RPN_MIN_SIZE)
-            else:
-                rois = mx.sym.Custom(
-                    cls_prob=rpn_cls_act_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
-                    op_type='proposal', feat_stride=cfg.network.RPN_FEAT_STRIDE,
-                    scales=tuple(cfg.network.ANCHOR_SCALES), ratios=tuple(cfg.network.ANCHOR_RATIOS),
-                    rpn_pre_nms_top_n=cfg.TRAIN.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=cfg.TRAIN.RPN_POST_NMS_TOP_N,
-                    threshold=cfg.TRAIN.RPN_NMS_THRESH, rpn_min_size=cfg.TRAIN.RPN_MIN_SIZE)
+            rois = mx.sym.Custom(
+                cls_prob=rpn_cls_act_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
+                op_type='proposal', feat_stride=cfg.network.RPN_FEAT_STRIDE,
+                scales=tuple(cfg.network.ANCHOR_SCALES), ratios=tuple(cfg.network.ANCHOR_RATIOS),
+                rpn_pre_nms_top_n=cfg.TRAIN.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=cfg.TRAIN.RPN_POST_NMS_TOP_N,
+                threshold=cfg.TRAIN.RPN_NMS_THRESH, rpn_min_size=cfg.TRAIN.RPN_MIN_SIZE)
+
             # ROI proposal target
             gt_boxes_reshape = mx.sym.Reshape(data=gt_boxes, shape=(-1, 5), name='gt_boxes_reshape')
             rois, label, bbox_target, bbox_weight = mx.sym.Custom(rois=rois, gt_boxes=gt_boxes_reshape,
@@ -106,22 +97,15 @@ class FasterRCNN(ResNet101):
                 data=rpn_cls_score_reshape, mode="channel", name="rpn_cls_prob")
             rpn_cls_prob_reshape = mx.sym.Reshape(
                 data=rpn_cls_prob, shape=(0, 2 * num_anchors, -1, 0), name='rpn_cls_prob_reshape')
-            if cfg.TEST.CXX_PROPOSAL:
-                rois = mx.contrib.sym.Proposal(
-                    cls_prob=rpn_cls_prob_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
-                    feature_stride=cfg.network.RPN_FEAT_STRIDE, scales=tuple(cfg.network.ANCHOR_SCALES),
-                    ratios=tuple(cfg.network.ANCHOR_RATIOS),
-                    rpn_pre_nms_top_n=cfg.TEST.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=cfg.TEST.RPN_POST_NMS_TOP_N,
-                    threshold=cfg.TEST.RPN_NMS_THRESH, rpn_min_size=cfg.TEST.RPN_MIN_SIZE)
-            else:
-                rois = mx.sym.Custom(
-                    cls_prob=rpn_cls_prob_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
-                    op_type='proposal', feat_stride=cfg.network.RPN_FEAT_STRIDE,
-                    scales=tuple(cfg.network.ANCHOR_SCALES), ratios=tuple(cfg.network.ANCHOR_RATIOS),
-                    rpn_pre_nms_top_n=cfg.TEST.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=cfg.TEST.RPN_POST_NMS_TOP_N,
-                    threshold=cfg.TEST.RPN_NMS_THRESH, rpn_min_size=cfg.TEST.RPN_MIN_SIZE)
+            rois = mx.sym.Custom(
+                cls_prob=rpn_cls_prob_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
+                op_type='proposal', feat_stride=cfg.network.RPN_FEAT_STRIDE,
+                scales=tuple(cfg.network.ANCHOR_SCALES), ratios=tuple(cfg.network.ANCHOR_RATIOS),
+                rpn_pre_nms_top_n=cfg.TEST.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=cfg.TEST.RPN_POST_NMS_TOP_N,
+                threshold=cfg.TEST.RPN_NMS_THRESH, rpn_min_size=cfg.TEST.RPN_MIN_SIZE)
 
-        conv_new_1 = mx.sym.Convolution(data=relu1, kernel=(1, 1), num_filter=256, name="conv_new_1")
+
+        conv_new_1 = mx.sym.Convolution(data=res5, kernel=(1, 1), num_filter=256, name="conv_new_1")
         conv_new_1_relu = mx.sym.Activation(data=conv_new_1, act_type='relu', name='conv_new_1_relu')
 
         roi_pool = mx.symbol.ROIPooling(
@@ -218,23 +202,15 @@ class FasterRCNN(ResNet101):
                 data=rpn_cls_score_reshape, mode="channel", name="rpn_cls_prob")
             rpn_cls_prob_reshape = mx.sym.Reshape(
                 data=rpn_cls_prob, shape=(0, 2 * num_anchors, -1, 0), name='rpn_cls_prob_reshape')
-            if cfg.TEST.CXX_PROPOSAL:
-                rois, score = mx.contrib.sym.Proposal(
-                    cls_prob=rpn_cls_prob_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
-                    output_score=True,
-                    feature_stride=cfg.network.RPN_FEAT_STRIDE, scales=tuple(cfg.network.ANCHOR_SCALES),
-                    ratios=tuple(cfg.network.ANCHOR_RATIOS),
-                    rpn_pre_nms_top_n=cfg.TEST.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=cfg.TEST.RPN_POST_NMS_TOP_N,
-                    threshold=cfg.TEST.RPN_NMS_THRESH, rpn_min_size=cfg.TEST.RPN_MIN_SIZE)
-            else:
-                rois, score = mx.sym.Custom(
-                    cls_prob=rpn_cls_prob_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
-                    output_score=True,
-                    op_type='proposal', feat_stride=cfg.network.RPN_FEAT_STRIDE,
-                    scales=tuple(cfg.network.ANCHOR_SCALES), ratios=tuple(cfg.network.ANCHOR_RATIOS),
-                    rpn_pre_nms_top_n=cfg.TEST.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=cfg.TEST.RPN_POST_NMS_TOP_N,
-                    threshold=cfg.TEST.RPN_NMS_THRESH, rpn_min_size=cfg.TEST.RPN_MIN_SIZE)
-                group = mx.symbol.Group([rois, score])
+            rois, score = mx.sym.Custom(
+                cls_prob=rpn_cls_prob_reshape, bbox_pred=rpn_bbox_pred, im_info=im_info, name='rois',
+                output_score=True,
+                op_type='proposal', feat_stride=cfg.network.RPN_FEAT_STRIDE,
+                scales=tuple(cfg.network.ANCHOR_SCALES), ratios=tuple(cfg.network.ANCHOR_RATIOS),
+                rpn_pre_nms_top_n=cfg.TEST.RPN_PRE_NMS_TOP_N, rpn_post_nms_top_n=cfg.TEST.RPN_POST_NMS_TOP_N,
+                threshold=cfg.TEST.RPN_NMS_THRESH, rpn_min_size=cfg.TEST.RPN_MIN_SIZE)
+            group = mx.symbol.Group([rois, score])
+
         self.sym = group
         return group
 

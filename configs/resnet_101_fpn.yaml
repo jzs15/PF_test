@@ -1,8 +1,8 @@
 ---
 MXNET_VERSION: "mxnet"
 output_path: "./output/fpn/coco"
-symbol: resnet_v1_101_fpn_rcnn
-gpus: '0,1,2,3,4,5,6,7'
+symbol: fpn.FPN
+gpus: '0'
 CLASS_AGNOSTIC: false
 SCALES:
 - 800
@@ -57,10 +57,10 @@ dataset:
   NUM_CLASSES: 81
   dataset: coco
   dataset_path: "./data/coco"
-  image_set: train2014+valminusminival2014
+  image_set: train
   # image_set: minival2014
   root_path: "./data"
-  test_image_set: minival2014
+  test_image_set: test
   proposal: rpn
 TRAIN:
   lr: 0.01 # this is for 8 gpus, if you want to use 1 gpus, the lr should be 0.01 / 8
@@ -141,7 +141,6 @@ TEST:
   # size of images for each device
   BATCH_IMAGES: 1
   # RPN proposal
-  CXX_PROPOSAL: false
   RPN_NMS_THRESH: 0.7
   RPN_PRE_NMS_TOP_N: 12000
   RPN_POST_NMS_TOP_N: 2000

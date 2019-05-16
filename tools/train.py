@@ -61,8 +61,9 @@ def train_fpn(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, lr, 
     prefix = os.path.join(final_output_path, prefix)
 
     # load symbol
-    shutil.copy2(os.path.join(curr_path, 'symbols', config.symbol + '.py'), final_output_path)
-    sym_instance = eval(config.symbol + '.' + config.symbol)()
+    symbol_path = config.symbol.split('.')[0]
+    shutil.copy2(os.path.join(curr_path, 'symbols', symbol_path + '.py'), final_output_path)
+    sym_instance = eval(config.symbol)()
     sym = sym_instance.get_symbol(config, is_train=True)
 
     feat_pyramid_level = np.log2(config.network.RPN_FEAT_STRIDE).astype(int)
@@ -174,8 +175,9 @@ def train_faster(args, ctx, pretrained, epoch, prefix, begin_epoch, end_epoch, l
     prefix = os.path.join(final_output_path, prefix)
 
     # load symbol
-    shutil.copy2(os.path.join(curr_path, 'symbols', config.symbol + '.py'), final_output_path)
-    sym_instance = eval(config.symbol + '.' + config.symbol)()
+    symbol_path = config.symbol.split('.')[0]
+    shutil.copy2(os.path.join(curr_path, 'symbols', symbol_path + '.py'), final_output_path)
+    sym_instance = eval(config.symbol)()
     sym = sym_instance.get_symbol(config, is_train=True)
     feat_sym = sym.get_internals()['rpn_cls_score_output']
 

@@ -16,7 +16,7 @@ from operator_py.box_annotator_ohem import *
 
 class ResNet101(Symbol):
     def __init__(self):
-        self.eps = 1e-5
+        raise NotImplementedError()
 
     def get_resnet_backbone(self, data, is_fpn=False):
         conv1 = mx.symbol.Convolution(name='conv1', data=data, num_filter=64, pad=(3, 3), kernel=(7, 7), stride=(2, 2),
@@ -169,17 +169,9 @@ class ResNet101(Symbol):
         scale3b3_branch2a = bn3b3_branch2a
         res3b3_branch2a_relu = mx.symbol.Activation(name='res3b3_branch2a_relu', data=scale3b3_branch2a,
                                                     act_type='relu')
-        if is_fpn:
-            res3b3_branch2b_offset = mx.symbol.Convolution(name='res3b3_branch2b_offset', data=res3b3_branch2a_relu,
-                                                           num_filter=72, pad=(1, 1), kernel=(3, 3), stride=(1, 1))
-            res3b3_branch2b = mx.contrib.symbol.DeformableConvolution(name='res3b3_branch2b', data=res3b3_branch2a_relu,
-                                                                      offset=res3b3_branch2b_offset,
-                                                                      num_filter=128, pad=(1, 1), kernel=(3, 3),
-                                                                      num_deformable_group=4,
-                                                                      stride=(1, 1), no_bias=True)
-        else:
-            res3b3_branch2b = mx.symbol.Convolution(name='res3b3_branch2b', data=res3b3_branch2a_relu, num_filter=128,
-                                                    pad=(1, 1), kernel=(3, 3), stride=(1, 1), no_bias=True)
+        res3b3_branch2b = mx.symbol.Convolution(name='res3b3_branch2b', data=res3b3_branch2a_relu, num_filter=128,
+                                                pad=(1, 1), kernel=(3, 3), stride=(1, 1), no_bias=True)
+
         bn3b3_branch2b = mx.symbol.BatchNorm(name='bn3b3_branch2b', data=res3b3_branch2b, use_global_stats=True,
                                              fix_gamma=False, eps=self.eps)
         scale3b3_branch2b = bn3b3_branch2b
@@ -666,18 +658,9 @@ class ResNet101(Symbol):
         scale4b22_branch2a = bn4b22_branch2a
         res4b22_branch2a_relu = mx.symbol.Activation(name='res4b22_branch2a_relu', data=scale4b22_branch2a,
                                                      act_type='relu')
-        if is_fpn:
-            res4b22_branch2b_offset = mx.symbol.Convolution(name='res4b22_branch2b_offset', data=res4b22_branch2a_relu,
-                                                            num_filter=72, pad=(1, 1), kernel=(3, 3), stride=(1, 1))
-            res4b22_branch2b = mx.contrib.symbol.DeformableConvolution(name='res4b22_branch2b',
-                                                                       data=res4b22_branch2a_relu,
-                                                                       offset=res4b22_branch2b_offset,
-                                                                       num_filter=256, pad=(1, 1), kernel=(3, 3),
-                                                                       num_deformable_group=4,
-                                                                       stride=(1, 1), no_bias=True)
-        else:
-            res4b22_branch2b = mx.symbol.Convolution(name='res4b22_branch2b', data=res4b22_branch2a_relu, num_filter=256,
-                                                     pad=(1, 1), kernel=(3, 3), stride=(1, 1), no_bias=True)
+        res4b22_branch2b = mx.symbol.Convolution(name='res4b22_branch2b', data=res4b22_branch2a_relu, num_filter=256,
+                                                 pad=(1, 1), kernel=(3, 3), stride=(1, 1), no_bias=True)
+
         bn4b22_branch2b = mx.symbol.BatchNorm(name='bn4b22_branch2b', data=res4b22_branch2b, use_global_stats=True,
                                               fix_gamma=False, eps=self.eps)
         scale4b22_branch2b = bn4b22_branch2b
@@ -777,5 +760,5 @@ class ResNet101(Symbol):
         if is_fpn:
             return res2c_relu, res3b3_relu, res4b22_relu, res5c_relu
         else:
-            return res5c_relu
+            return res4b22_relu, res5c_relu
 

@@ -16,7 +16,7 @@ from operator_py.box_annotator_ohem import *
 
 class FPN(ResNet101):
     def __init__(self):
-        super(FPN, self).__init__()
+        self.eps = 1e-5
         self.shared_param_list = ['rpn_conv', 'rpn_cls_score', 'rpn_bbox_pred']
         self.shared_param_dict = {}
         for name in self.shared_param_list:
@@ -87,7 +87,7 @@ class FPN(ResNet101):
         im_info = mx.sym.Variable(name="im_info")
 
         # shared convolutional layers
-        res2, res3, res4, res5 = self.get_resnet_backbone(data)
+        res2, res3, res4, res5 = self.get_resnet_backbone(data, is_fpn=True)
         fpn_p2, fpn_p3, fpn_p4, fpn_p5, fpn_p6 = self.get_fpn_feature(res2, res3, res4, res5)
 
         rpn_cls_score_p2, rpn_prob_p2, rpn_bbox_loss_p2, rpn_bbox_pred_p2 = self.get_rpn_subnet(fpn_p2,

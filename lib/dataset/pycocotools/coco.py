@@ -1,49 +1,5 @@
 __author__ = 'tylin'
 __version__ = '1.0.1'
-# Interface for accessing the Microsoft COCO dataset.
-
-# Microsoft COCO is a large image dataset designed for object detection,
-# segmentation, and caption generation. pycocotools is a Python API that
-# assists in loading, parsing and visualizing the annotations in COCO.
-# Please visit http://mscoco.org/ for more information on COCO, including
-# for the data, paper, and tutorials. The exact format of the annotations
-# is also described on the COCO website. For example usage of the pycocotools
-# please see pycocotools_demo.ipynb. In addition to this API, please download both
-# the COCO images and annotations in order to run the demo.
-
-# An alternative to using the API is to load the annotations directly
-# into Python dictionary
-# Using the API provides additional utility functions. Note that this API
-# supports both *instance* and *caption* annotations. In the case of
-# captions not all functions are defined (e.g. categories are undefined).
-
-# The following API functions are defined:
-#  COCO       - COCO api class that loads COCO annotation file and prepare data structures.
-#  decodeMask - Decode binary mask M encoded via run-length encoding.
-#  encodeMask - Encode binary mask M using run-length encoding.
-#  getAnnIds  - Get ann ids that satisfy given filter conditions.
-#  getCatIds  - Get cat ids that satisfy given filter conditions.
-#  getImgIds  - Get img ids that satisfy given filter conditions.
-#  loadAnns   - Load anns with the specified ids.
-#  loadCats   - Load cats with the specified ids.
-#  loadImgs   - Load imgs with the specified ids.
-#  segToMask  - Convert polygon segmentation to binary mask.
-#  showAnns   - Display the specified annotations.
-#  loadRes    - Load algorithm results and create API for accessing them.
-#  download   - Download COCO images from mscoco.org server.
-# Throughout the API "ann"=annotation, "cat"=category, and "img"=image.
-# Help on each functions can be accessed by: "help COCO>function".
-
-# See also COCO>decodeMask,
-# COCO>encodeMask, COCO>getAnnIds, COCO>getCatIds,
-# COCO>getImgIds, COCO>loadAnns, COCO>loadCats,
-# COCO>loadImgs, COCO>segToMask, COCO>showAnns
-
-# Microsoft COCO Toolbox.      version 2.0
-# Data, paper, and tutorials available at:  http://mscoco.org/
-# Code written by Piotr Dollar and Tsung-Yi Lin, 2014.
-# Licensed under the Simplified BSD License [see bsd.txt]
-
 import json
 import datetime
 import time
@@ -55,7 +11,6 @@ from skimage.draw import polygon
 import urllib
 import copy
 import itertools
-import mask
 import os
 
 class COCO:
@@ -233,52 +188,6 @@ class COCO:
         elif type(ids) == int:
             return [self.imgs[ids]]
 
-    def showAnns(self, anns):
-        """
-        Display the specified annotations.
-        :param anns (array of object): annotations to display
-        :return: None
-        """
-        if len(anns) == 0:
-            return 0
-        if 'segmentation' in anns[0]:
-            datasetType = 'instances'
-        elif 'caption' in anns[0]:
-            datasetType = 'captions'
-        if datasetType == 'instances':
-            ax = plt.gca()
-            polygons = []
-            color = []
-            for ann in anns:
-                c = np.random.random((1, 3)).tolist()[0]
-                if type(ann['segmentation']) == list:
-                    # polygon
-                    for seg in ann['segmentation']:
-                        poly = np.array(seg).reshape((len(seg)/2, 2))
-                        polygons.append(Polygon(poly, True,alpha=0.4))
-                        color.append(c)
-                else:
-                    # mask
-                    t = self.imgs[ann['image_id']]
-                    if type(ann['segmentation']['counts']) == list:
-                        rle = mask.frPyObjects([ann['segmentation']], t['height'], t['width'])
-                    else:
-                        rle = [ann['segmentation']]
-                    m = mask.decode(rle)
-                    img = np.ones( (m.shape[0], m.shape[1], 3) )
-                    if ann['iscrowd'] == 1:
-                        color_mask = np.array([2.0,166.0,101.0])/255
-                    if ann['iscrowd'] == 0:
-                        color_mask = np.random.random((1, 3)).tolist()[0]
-                    for i in range(3):
-                        img[:,:,i] = color_mask[i]
-                    ax.imshow(np.dstack( (img, m*0.5) ))
-            p = PatchCollection(polygons, facecolors=color, edgecolors=(0,0,0,1), linewidths=3, alpha=0.4)
-            ax.add_collection(p)
-        elif datasetType == 'captions':
-            for ann in anns:
-                print ann['caption']
-
     def loadRes(self, resFile):
         """
         Load result file and return a result api object.
@@ -306,19 +215,7 @@ class COCO:
             res.dataset['categories'] = copy.deepcopy(self.dataset['categories'])
             for id, ann in enumerate(anns):
                 bb = ann['bbox']
-                x1, x2, y1, y2 = [bb[0], bb[0]+bb[2], bb[1], bb[1]+bb[3]]
-                if not 'segmentation' in ann:
-                    ann['segmentation'] = [[x1, y1, x1, y2, x2, y2, x2, y1]]
                 ann['area'] = bb[2]*bb[3]
-                ann['id'] = id+1
-                ann['iscrowd'] = 0
-        elif 'segmentation' in anns[0]:
-            res.dataset['categories'] = copy.deepcopy(self.dataset['categories'])
-            for id, ann in enumerate(anns):
-                # now only support compressed RLE format as segmentation results
-                ann['area'] = mask.area([ann['segmentation']])[0]
-                if not 'bbox' in ann:
-                    ann['bbox'] = mask.toBbox([ann['segmentation']])[0]
                 ann['id'] = id+1
                 ann['iscrowd'] = 0
         print 'DONE (t=%0.2fs)'%(time.time()- tic)
@@ -350,99 +247,3 @@ class COCO:
             if not os.path.exists(fname):
                 urllib.urlretrieve(img['coco_url'], fname)
             print 'downloaded %d/%d images (t=%.1fs)'%(i, N, time.time()- tic)
-
-    @staticmethod
-    def decodeMask(R):
-        """
-        Decode binary mask M encoded via run-length encoding.
-        :param   R (object RLE)    : run-length encoding of binary mask
-        :return: M (bool 2D array) : decoded binary mask
-        """
-        N = len(R['counts'])
-        M = np.zeros( (R['size'][0]*R['size'][1], ))
-        n = 0
-        val = 1
-        for pos in range(N):
-            val = not val
-            for c in range(R['counts'][pos]):
-                R['counts'][pos]
-                M[n] = val
-                n += 1
-        return M.reshape((R['size']), order='F')
-
-    @staticmethod
-    def encodeMask(M):
-        """
-        Encode binary mask M using run-length encoding.
-        :param   M (bool 2D array)  : binary mask to encode
-        :return: R (object RLE)     : run-length encoding of binary mask
-        """
-        [h, w] = M.shape
-        M = M.flatten(order='F')
-        N = len(M)
-        counts_list = []
-        pos = 0
-        # counts
-        counts_list.append(1)
-        diffs = np.logical_xor(M[0:N-1], M[1:N])
-        for diff in diffs:
-            if diff:
-                pos +=1
-                counts_list.append(1)
-            else:
-                counts_list[pos] += 1
-        # if array starts from 1. start with 0 counts for 0
-        if M[0] == 1:
-            counts_list = [0] + counts_list
-        return {'size':      [h, w],
-               'counts':    counts_list ,
-               }
-
-    @staticmethod
-    def segToMask( S, h, w ):
-         """
-         Convert polygon segmentation to binary mask.
-         :param   S (float array)   : polygon segmentation mask
-         :param   h (int)           : target mask height
-         :param   w (int)           : target mask width
-         :return: M (bool 2D array) : binary mask
-         """
-         M = np.zeros((h,w), dtype=np.bool)
-         for s in S:
-             N = len(s)
-             rr, cc = polygon(np.array(s[1:N:2]).clip(max=h-1), \
-                              np.array(s[0:N:2]).clip(max=w-1)) # (y, x)
-             M[rr, cc] = 1
-         return M
-
-
-
-    def annToRLE(self, ann):
-        """
-        Convert annotation which can be polygons, uncompressed RLE to RLE.
-        :return: binary mask (numpy 2D array)
-        """
-        t = self.imgs[ann['image_id']]
-        h, w = t['height'], t['width']
-        segm = ann['segmentation']
-        if type(segm) == list:
-            # polygon -- a single object might consist of multiple parts
-            # we merge all parts into one mask rle code
-            rles = mask.frPyObjects(segm, h, w)
-            rle = mask.merge(rles)
-        elif type(segm['counts']) == list:
-            # uncompressed RLE
-            rle = mask.frPyObjects(segm, h, w)
-        else:
-            # rle
-            rle = ann['segmentation']
-        return rle
-
-    def annToMask(self, ann):
-        """
-        Convert annotation which can be polygons, uncompressed RLE, or RLE to binary mask.
-        :return: binary mask (numpy 2D array)
-        """
-        rle = self.annToRLE(ann)
-        m = mask.decode(rle)
-        return m

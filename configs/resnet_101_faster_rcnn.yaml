@@ -1,8 +1,8 @@
 ---
 MXNET_VERSION: "mxnet"
 output_path: "./output/rcnn/coco"
-symbol: resnet_v1_101_rcnn
-gpus: '0,1,2,3'
+symbol: faster_rcnn.FasterRCNN
+gpus: '0'
 CLASS_AGNOSTIC: false
 SCALES:
 - 600
@@ -53,9 +53,9 @@ dataset:
   NUM_CLASSES: 81
   dataset: coco
   dataset_path: "./data/coco"
-  image_set: train2014+val2014
+  image_set: train
   root_path: "./data"
-  test_image_set: test-dev2015
+  test_image_set: test
   proposal: rpn
 TRAIN:
   lr: 0.0005
@@ -137,7 +137,6 @@ TEST:
   # size of images for each device
   BATCH_IMAGES: 1
   # RPN proposal
-  CXX_PROPOSAL: false
   RPN_NMS_THRESH: 0.7
   RPN_PRE_NMS_TOP_N: 6000
   RPN_POST_NMS_TOP_N: 300
