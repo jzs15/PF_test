@@ -1,0 +1,9 @@
+mxnet-cu80==1.1.0
+opencv-python
+Pillow
+pyyaml
+easydict
+matplotlib
+scikit-image
+scipy
+Cython
