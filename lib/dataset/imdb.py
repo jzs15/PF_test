@@ -20,7 +20,7 @@ def get_flipped_entry_outclass_wrapper(IMDB_instance, seg_rec):
     return IMDB_instance.get_flipped_entry(seg_rec)
 
 class IMDB(object):
-    def __init__(self, name, image_set, root_path, dataset_path, result_path=None):
+    def __init__(self, name, image_set, root_path, result_path=None):
         """
         basic information about an image database
         :param name: name of image database will be used for any output
@@ -30,7 +30,6 @@ class IMDB(object):
         self.name = name + '_' + image_set
         self.image_set = image_set
         self.root_path = root_path
-        self.data_path = dataset_path
         self._result_path = result_path
 
         # abstract attributes
