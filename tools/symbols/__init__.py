@@ -1,3 +1,4 @@
 import faster_rcnn
 import fpn
-import relation
+import fpn_relation
+import faster_rcnn_relation

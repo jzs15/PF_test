@@ -15,7 +15,7 @@ from operator_py.fpn_roi_pooling import *
 from operator_py.box_annotator_ohem import *
 
 
-class Relation(ResNet101):
+class FPNRelation(ResNet101):
     def __init__(self):
         self.eps = 1e-5
         self.shared_param_list = ['rpn_conv', 'rpn_cls_score', 'rpn_bbox_pred']
