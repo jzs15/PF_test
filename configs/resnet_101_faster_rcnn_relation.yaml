@@ -1,6 +1,6 @@
 ---
 MXNET_VERSION: "mxnet"
-output_path: "./output/faster_rcnn/coco"
+output_path: "./output/faster_rcnn_relation/coco"
 symbol: faster_rcnn_relation.FasterRCNNRelation
 gpus: '0'
 CLASS_AGNOSTIC: false

@@ -1,6 +1,6 @@
 ---
 MXNET_VERSION: "mxnet"
-output_path: "./output/relation/coco"
+output_path: "./output/fpn_relation/coco"
 symbol: fpn_relation.FPNRelation
 gpus: '0'
 CLASS_AGNOSTIC: false

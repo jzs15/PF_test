@@ -366,21 +366,21 @@ class FPNRelation(ResNet101):
         # [num_fg_classes, num_boxes, num_boxes]
         delta_x = mx.sym.broadcast_minus(lhs=center_x,
                                          rhs=mx.sym.transpose(center_x))
-        delta_x = mx.sym.broadcast_div(delta_x, mx.sym.minimum(bbox_width, mx.sym.transpose(bbox_width)))
+        delta_x = mx.sym.broadcast_div(delta_x, mx.sym.broadcast_minimum(bbox_width, mx.sym.transpose(bbox_width)))
         delta_x = mx.sym.log(mx.sym.abs(delta_x) + 1)
 
         delta_y = mx.sym.broadcast_minus(lhs=center_y,
                                          rhs=mx.sym.transpose(center_y))
-        delta_y = mx.sym.broadcast_div(delta_y, mx.sym.minimum(bbox_height, mx.sym.transpose(bbox_height)))
+        delta_y = mx.sym.broadcast_div(delta_y, mx.sym.broadcast_minimum(bbox_height, mx.sym.transpose(bbox_height)))
         delta_y = mx.sym.log(mx.sym.abs(
             delta_y * (mx.sym.broadcast_greater(bbox_height, mx.sym.transpose(bbox_height)) * 2 - 1) - 2.6738) + 1)
 
-        delta_width = mx.sym.broadcast_div(mx.sym.maximum(bbox_width, mx.sym.transpose(bbox_width)),
-                                           mx.sym.minimum(bbox_width, mx.sym.transpose(bbox_width)))
+        delta_width = mx.sym.broadcast_div(mx.sym.broadcast_maximum(bbox_width, mx.sym.transpose(bbox_width)),
+                                           mx.sym.broadcast_minimum(bbox_width, mx.sym.transpose(bbox_width)))
         delta_width = mx.sym.log(mx.sym.abs(delta_width - 3.5183) + 1)
 
-        delta_height = mx.sym.broadcast_div(mx.sym.maximum(bbox_height, mx.sym.transpose(bbox_height)),
-                                           mx.sym.minimum(bbox_height, mx.sym.transpose(bbox_height)))
+        delta_height = mx.sym.broadcast_div(mx.sym.broadcast_maximum(bbox_height, mx.sym.transpose(bbox_height)),
+                                            mx.sym.broadcast_minimum(bbox_height, mx.sym.transpose(bbox_height)))
         delta_height = mx.sym.log(mx.sym.abs(delta_height - 7.2374) + 1)
 
         concat_list = [delta_x, delta_y, delta_width, delta_height]
