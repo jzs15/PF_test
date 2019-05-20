@@ -11,12 +11,7 @@
 # https://github.com/ijkguo/mx-rcnn/
 # --------------------------------------------------------
 
-import argparse
 import pprint
-import logging
-import time
-import os
-import mxnet as mx
 
 from symbols import *
 from dataset import *
@@ -25,7 +20,7 @@ from core.tester import Predictor, pred_eval
 from utils.load_model import load_param
 
 
-def test_rcnn(cfg, dataset, image_set, root_path, dataset_path,
+def test_rcnn(cfg, dataset, image_set, root_path,
               ctx, prefix, epoch,
               vis, ignore_cache, shuffle, has_rpn, proposal, thresh, logger=None, output_path=None):
     if not logger:

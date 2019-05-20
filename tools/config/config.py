@@ -167,7 +167,10 @@ config.TEST.max_per_image = 300
 config.TEST.test_epoch = 0
 
 config.TEST.USE_SOFTNMS = False
+config.TEST.USE_POSTPROCESS = False
 
+config.POSTPROCESS = edict()
+config.POSTPROCESS.thresh = [0.0, 0.6, 0.55]
 
 def update_config(config_file):
     exp_config = None

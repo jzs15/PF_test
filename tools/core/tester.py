@@ -2,7 +2,7 @@
 # Deformable Convolutional Networks
 # Copyright (c) 2017 Microsoft
 # Licensed under The MIT License [see LICENSE for details]
-# Modified by Haozhi Qi
+# Modified by Jinseok Kim
 # --------------------------------------------------------
 # Based on:
 # MX-RCNN
@@ -22,6 +22,7 @@ from utils import image
 from bbox.bbox_transform import bbox_pred, clip_boxes
 from nms.nms import py_nms_wrapper, py_softnms_wrapper, cpu_nms_wrapper, gpu_nms_wrapper
 from utils.PrefetchingIter import PrefetchingIter
+from postprocess.postprocess import delete_over
 
 
 class Predictor(object):
@@ -104,7 +105,6 @@ def generate_proposals(predictor, test_data, imdb, cfg, vis=False, thresh=0.):
             print 'generating %d/%d' % (idx + 1, imdb.num_images), 'proposal %d' % (dets.shape[0]), \
                 'data %.4fs net %.4fs' % (t1, t2 / test_data.batch_size)
             idx += 1
-
 
     assert len(imdb_boxes) == imdb.num_images, 'calculations not complete'
 
@@ -225,7 +225,8 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=No
     num_images = imdb.num_images
 
     for test_scale_index, test_scale in enumerate(cfg.TEST_SCALES):
-        det_file_single_scale = os.path.join(imdb.result_path, imdb.name + '_detections_' + str(test_scale_index) + '.pkl')
+        det_file_single_scale = os.path.join(imdb.result_path,
+                                             imdb.name + '_detections_' + str(test_scale_index) + '.pkl')
         # if os.path.exists(det_file_single_scale):
         #    continue
         cfg.SCALES = [test_scale]
@@ -248,7 +249,8 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=No
     all_boxes = [[[] for _ in range(num_images)] for _ in range(imdb.num_classes)]
 
     for test_scale_index, test_scale in enumerate(cfg.TEST_SCALES):
-        det_file_single_scale = os.path.join(imdb.result_path, imdb.name + '_detections_' + str(test_scale_index) + '.pkl')
+        det_file_single_scale = os.path.join(imdb.result_path,
+                                             imdb.name + '_detections_' + str(test_scale_index) + '.pkl')
         if os.path.exists(det_file_single_scale):
             with open(det_file_single_scale, 'rb') as fid:
                 all_boxes_single_scale = cPickle.load(fid)
@@ -257,7 +259,8 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=No
                     if len(all_boxes[idx_class][idx_im]) == 0:
                         all_boxes[idx_class][idx_im] = all_boxes_single_scale[idx_class][idx_im]
                     else:
-                        all_boxes[idx_class][idx_im] = np.vstack((all_boxes[idx_class][idx_im], all_boxes_single_scale[idx_class][idx_im]))
+                        all_boxes[idx_class][idx_im] = np.vstack(
+                            (all_boxes[idx_class][idx_im], all_boxes_single_scale[idx_class][idx_im]))
 
     for idx_class in range(1, imdb.num_classes):
         for idx_im in range(0, num_images):
@@ -268,6 +271,10 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=No
                 nms = py_nms_wrapper(cfg.TEST.NMS)
                 keep = nms(all_boxes[idx_class][idx_im])
                 all_boxes[idx_class][idx_im] = all_boxes[idx_class][idx_im][keep, :]
+
+            if cfg.TEST.USE_POSTPROCESS:
+                all_boxes[idx_class][idx_im] = delete_over(all_boxes[idx_class][idx_im],
+                                                           cfg.POSTPROCESS.thresh[idx_class])
 
     if max_per_image > 0:
         for idx_im in range(0, num_images):

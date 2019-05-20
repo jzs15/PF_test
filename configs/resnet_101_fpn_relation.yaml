@@ -156,3 +156,6 @@ TEST:
   # soft nms
   USE_SOFTNMS: true
   SOFTNMS_THRESH: 0.6
+  USE_POSTPROCESS: true
+POSTPROCESS:
+  thresh: [0.0, 0.6, 0.55]
