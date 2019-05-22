@@ -93,5 +93,6 @@ data
 external
 output
 model
+mAP
 
 .db

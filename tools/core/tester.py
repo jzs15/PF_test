@@ -20,7 +20,7 @@ import numpy as np
 from module import MutableModule
 from utils import image
 from bbox.bbox_transform import bbox_pred, clip_boxes
-from nms.nms import py_nms_wrapper, py_softnms_wrapper, cpu_nms_wrapper, gpu_nms_wrapper
+from nms.nms import py_nms_wrapper, py_softnms_wrapper, py_hybrid_wrapper, cpu_nms_wrapper, gpu_nms_wrapper
 from utils.PrefetchingIter import PrefetchingIter
 from postprocess.postprocess import delete_over
 
@@ -227,8 +227,8 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=No
     for test_scale_index, test_scale in enumerate(cfg.TEST_SCALES):
         det_file_single_scale = os.path.join(imdb.result_path,
                                              imdb.name + '_detections_' + str(test_scale_index) + '.pkl')
-        # if os.path.exists(det_file_single_scale):
-        #    continue
+        if os.path.exists(det_file_single_scale):
+           continue
         cfg.SCALES = [test_scale]
         test_data.reset()
 
@@ -265,10 +265,10 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=No
     for idx_class in range(1, imdb.num_classes):
         for idx_im in range(0, num_images):
             if cfg.TEST.USE_SOFTNMS:
-                soft_nms = py_softnms_wrapper(cfg.TEST.SOFTNMS_THRESH, max_dets=max_per_image)
+                soft_nms = py_hybrid_wrapper(cfg.POSTPROCESS.thresh[idx_class], max_dets=max_per_image)
                 all_boxes[idx_class][idx_im] = soft_nms(all_boxes[idx_class][idx_im])
             else:
-                nms = py_nms_wrapper(cfg.TEST.NMS)
+                nms = py_nms_wrapper(cfg.POSTPROCESS.thresh[idx_class])
                 keep = nms(all_boxes[idx_class][idx_im])
                 all_boxes[idx_class][idx_im] = all_boxes[idx_class][idx_im][keep, :]
 
@@ -286,8 +286,8 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=No
                     keep = np.where(all_boxes[j][idx_im][:, -1] >= image_thresh)[0]
                     all_boxes[j][idx_im] = all_boxes[j][idx_im][keep, :]
 
-    with open(det_file, 'wb') as f:
-        cPickle.dump(all_boxes, f, protocol=cPickle.HIGHEST_PROTOCOL)
+    # with open(det_file, 'wb') as f:
+    #     cPickle.dump(all_boxes, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
     info_str = imdb.evaluate_detections(all_boxes)
     if logger:
