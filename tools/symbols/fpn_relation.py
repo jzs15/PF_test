@@ -238,6 +238,7 @@ class FPNRelation(ResNet101):
             group = mx.sym.Group([rois, cls_prob, bbox_pred])
 
         self.sym = group
+        mx.viz.plot_network(self.sym, title='graph', save_format='svg', hide_weights=True).view()
         return group
 
     def init_weight_rcnn(self, cfg, arg_params, aux_params):
@@ -363,25 +364,31 @@ class FPNRelation(ResNet101):
         bbox_height = ymax - ymin + 1.
         center_x = 0.5 * (xmin + xmax)
         center_y = 0.5 * (ymin + ymax)
+
+        min_width = mx.sym.broadcast_minimum(bbox_width, mx.sym.transpose(bbox_width))
+        max_width = mx.sym.broadcast_maximum(bbox_width, mx.sym.transpose(bbox_width))
+        min_height = mx.sym.broadcast_minimum(bbox_height, mx.sym.transpose(bbox_height))
+        max_height = mx.sym.broadcast_maximum(bbox_height, mx.sym.transpose(bbox_height))
+
         # [num_fg_classes, num_boxes, num_boxes]
-        delta_x = mx.sym.broadcast_minus(lhs=center_x,
-                                         rhs=mx.sym.transpose(center_x))
-        delta_x = mx.sym.broadcast_div(delta_x, mx.sym.broadcast_minimum(bbox_width, mx.sym.transpose(bbox_width)))
-        delta_x = mx.sym.log(mx.sym.abs(delta_x) + 1)
+        delta_x = mx.sym.broadcast_minus(lhs=center_x, hs=mx.sym.transpose(center_x))
+        delta_x = mx.sym.broadcast_div(delta_x, min_width)
+        delta_x = mx.sym.abs(delta_x)
+        delta_x = mx.sym.log(delta_x + 1)
 
-        delta_y = mx.sym.broadcast_minus(lhs=center_y,
-                                         rhs=mx.sym.transpose(center_y))
-        delta_y = mx.sym.broadcast_div(delta_y, mx.sym.broadcast_minimum(bbox_height, mx.sym.transpose(bbox_height)))
-        delta_y = mx.sym.log(mx.sym.abs(
-            delta_y * (mx.sym.broadcast_greater(bbox_height, mx.sym.transpose(bbox_height)) * 2 - 1) - 2.6738) + 1)
+        delta_y = mx.sym.broadcast_minus(lhs=center_y,  rhs=mx.sym.transpose(center_y))
+        delta_y = mx.sym.broadcast_div(delta_y, min_height)
+        delta_y = mx.sym.abs(
+            delta_y * (mx.sym.broadcast_greater(bbox_height, mx.sym.transpose(bbox_height)) * 2 - 1) - 2.7167)
+        delta_y = mx.sym.log(delta_y + 1)
 
-        delta_width = mx.sym.broadcast_div(mx.sym.broadcast_maximum(bbox_width, mx.sym.transpose(bbox_width)),
-                                           mx.sym.broadcast_minimum(bbox_width, mx.sym.transpose(bbox_width)))
-        delta_width = mx.sym.log(mx.sym.abs(delta_width - 3.5183) + 1)
+        delta_width = mx.sym.broadcast_div(max_width, min_width)
+        delta_width = mx.sym.abs(delta_width - 3.5067)
+        delta_width = mx.sym.log(delta_width + 1)
 
-        delta_height = mx.sym.broadcast_div(mx.sym.broadcast_maximum(bbox_height, mx.sym.transpose(bbox_height)),
-                                            mx.sym.broadcast_minimum(bbox_height, mx.sym.transpose(bbox_height)))
-        delta_height = mx.sym.log(mx.sym.abs(delta_height - 7.2374) + 1)
+        delta_height = mx.sym.broadcast_div(max_height, min_height)
+        delta_height = mx.sym.abs(delta_height - 7.4028)
+        delta_height = mx.sym.log(delta_height + 1)
 
         concat_list = [delta_x, delta_y, delta_width, delta_height]
         for idx, sym in enumerate(concat_list):
