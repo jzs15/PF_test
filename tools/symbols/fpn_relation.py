@@ -238,7 +238,6 @@ class FPNRelation(ResNet101):
             group = mx.sym.Group([rois, cls_prob, bbox_pred])
 
         self.sym = group
-        mx.viz.plot_network(self.sym, title='graph', save_format='svg', hide_weights=True).view()
         return group
 
     def init_weight_rcnn(self, cfg, arg_params, aux_params):
@@ -371,7 +370,7 @@ class FPNRelation(ResNet101):
         max_height = mx.sym.broadcast_maximum(bbox_height, mx.sym.transpose(bbox_height))
 
         # [num_fg_classes, num_boxes, num_boxes]
-        delta_x = mx.sym.broadcast_minus(lhs=center_x, hs=mx.sym.transpose(center_x))
+        delta_x = mx.sym.broadcast_minus(lhs=center_x, rhs=mx.sym.transpose(center_x))
         delta_x = mx.sym.broadcast_div(delta_x, min_width)
         delta_x = mx.sym.abs(delta_x)
         delta_x = mx.sym.log(delta_x + 1)
