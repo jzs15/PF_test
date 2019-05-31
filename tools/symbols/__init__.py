@@ -1,4 +1,3 @@
 import faster_rcnn
 import fpn
 import fpn_relation
-import faster_rcnn_relation

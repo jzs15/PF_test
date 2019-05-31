@@ -1,11 +1,34 @@
 import cPickle
 import os
 import numpy as np
+import struct
 
 from imdb import IMDB
 
 # coco api
 from .pycocotools.coco import COCO
+
+def get_image_size(fname):
+    '''Determine the image type of fhandle and return its size.
+    from draco'''
+    with open(fname, 'rb') as fhandle:
+        try:
+            fhandle.seek(0)  # Read 0xff next
+            size = 2
+            ftype = 0
+            while not 0xc0 <= ftype <= 0xcf:
+                fhandle.seek(size, 1)
+                byte = fhandle.read(1)
+                while ord(byte) == 0xff:
+                    byte = fhandle.read(1)
+                ftype = ord(byte)
+                size = struct.unpack('>H', fhandle.read(2))[0] - 2
+            # We are at a SOFn block
+            fhandle.seek(1, 1)  # Skip `precision' byte.
+            height, width = struct.unpack('>HH', fhandle.read(4))
+        except Exception:  # IGNORE:W0703
+            return
+        return int(width), int(height)
 
 
 def coco_results_one_category_kernel(data_pack):
@@ -96,9 +119,11 @@ class coco(IMDB):
         boxes = np.zeros((1, 4), dtype=np.uint16)
         gt_classes = np.zeros((1), dtype=np.int32)
         overlaps = np.zeros((1, self.num_classes), dtype=np.float32)
-        roi_rec = {'image': self.get_test_file_name(index),
-                   'height': 0,
-                   'width': 0,
+        img_name = self.get_test_file_name(index)
+        width, height = get_image_size(img_name)
+        roi_rec = {'image': img_name,
+                   'height': height,
+                   'width': width,
                    'boxes': boxes,
                    'gt_classes': gt_classes,
                    'gt_overlaps': overlaps,

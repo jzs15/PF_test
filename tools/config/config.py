@@ -158,17 +158,11 @@ config.TEST.PROPOSAL_PRE_NMS_TOP_N = 20000
 config.TEST.PROPOSAL_POST_NMS_TOP_N = 2000
 config.TEST.PROPOSAL_MIN_SIZE = config.network.RPN_FEAT_STRIDE
 
-# RCNN nms
-config.TEST.NMS = 0.3
-
-config.TEST.max_per_image = 300
-
 # Test Model Epoch
 config.TEST.test_epoch = 0
 
-config.TEST.USE_SOFTNMS = False
 config.TEST.USE_POSTPROCESS = False
-
+config.TEST.max_per_image = 300
 config.POSTPROCESS = edict()
 config.POSTPROCESS.thresh = [0.0, 0.6, 0.55]
 

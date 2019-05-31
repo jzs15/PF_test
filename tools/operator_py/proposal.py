@@ -22,7 +22,7 @@ from distutils.util import strtobool
 
 from bbox.bbox_transform import bbox_pred, clip_boxes
 from rpn.generate_anchor import generate_anchors
-from nms.nms import py_nms_wrapper, cpu_nms_wrapper, gpu_nms_wrapper
+from nms.nms import cpu_nms_wrapper, gpu_nms_wrapper
 
 DEBUG = False
 

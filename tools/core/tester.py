@@ -20,9 +20,9 @@ import numpy as np
 from module import MutableModule
 from utils import image
 from bbox.bbox_transform import bbox_pred, clip_boxes
-from nms.nms import py_nms_wrapper, py_softnms_wrapper, py_hybrid_wrapper, cpu_nms_wrapper, gpu_nms_wrapper
+from nms.nms import py_softnms_wrapper, py_hybrid_wrapper
 from utils.PrefetchingIter import PrefetchingIter
-from postprocess.postprocess import delete_over
+from postprocess.postprocess import post_process
 
 
 class Predictor(object):
@@ -192,7 +192,7 @@ def detect_at_single_scale(predictor, data_names, imdb, test_data, cfg, thresh, 
                                 net_time / idx * test_data.batch_size, post_time / idx * test_data.batch_size))
 
 
-def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=None, ignore_cache=True):
+def pred_eval(predictor, test_data, imdb, cfg, roidb, vis=False, thresh=1e-3, logger=None, ignore_cache=True):
     """
     wrapper for calculating offline validation for faster data analysis
     in this example, all threshold are set by hand
@@ -232,9 +232,6 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=No
         cfg.SCALES = [test_scale]
         test_data.reset()
 
-        # all detections are collected into:
-        #    all_boxes[cls][image] = N x 5 array of detections in
-        #    (x1, y1, x2, y2, score)
         all_boxes_single_scale = [[[] for _ in range(num_images)]
                                   for _ in range(imdb.num_classes)]
 
@@ -243,9 +240,6 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=No
         with open(det_file_single_scale, 'wb') as f:
             cPickle.dump(all_boxes_single_scale, f, protocol=cPickle.HIGHEST_PROTOCOL)
 
-    # all detections are collected into:
-    #    all_boxes[cls][image] = N x 5 array of detections in
-    #    (x1, y1, x2, y2, score)
     all_boxes = [[[] for _ in range(num_images)] for _ in range(imdb.num_classes)]
 
     for test_scale_index, test_scale in enumerate(cfg.TEST_SCALES):
@@ -262,19 +256,17 @@ def pred_eval(predictor, test_data, imdb, cfg, vis=False, thresh=1e-3, logger=No
                         all_boxes[idx_class][idx_im] = np.vstack(
                             (all_boxes[idx_class][idx_im], all_boxes_single_scale[idx_class][idx_im]))
 
-    for idx_class in range(1, imdb.num_classes):
+    if cfg.TEST.USE_POSTPROCESS:
+        info = {'thresh': cfg.POSTPROCESS.thresh, 'soft_thresh': cfg.SOFTNMS_THRESH, 'max_dets': max_per_image}
         for idx_im in range(0, num_images):
-            if cfg.TEST.USE_SOFTNMS:
-                soft_nms = py_hybrid_wrapper(cfg.POSTPROCESS.thresh[idx_class], max_dets=max_per_image)
+            info['width'] = roidb[idx_im]['width']
+            info['height'] = roidb[idx_im]['height']
+            all_boxes[1][idx_im], all_boxes[2][idx_im] = post_process([all_boxes[1][idx_im],all_boxes[2][idx_im]], info)
+    else:
+        for idx_class in range(1, imdb.num_classes):
+            for idx_im in range(0, num_images):
+                soft_nms = py_softnms_wrapper(cfg.SOFTNMS_THRESH, max_dets=max_per_image)
                 all_boxes[idx_class][idx_im] = soft_nms(all_boxes[idx_class][idx_im])
-            else:
-                nms = py_nms_wrapper(cfg.POSTPROCESS.thresh[idx_class])
-                keep = nms(all_boxes[idx_class][idx_im])
-                all_boxes[idx_class][idx_im] = all_boxes[idx_class][idx_im][keep, :]
-
-            if cfg.TEST.USE_POSTPROCESS:
-                all_boxes[idx_class][idx_im] = delete_over(all_boxes[idx_class][idx_im],
-                                                           cfg.POSTPROCESS.thresh[idx_class])
 
     if max_per_image > 0:
         for idx_im in range(0, num_images):
